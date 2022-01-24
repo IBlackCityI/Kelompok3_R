@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html manifest="cache.appcache">
+    <head>
+        <meta charset="UTF-8">
+
+        <meta name="viewport" content="width=device-width, height=device-height, minimal-ui,
+            initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no">
+
+        <!-- Open Graph for Facebook. -->
+        <meta property="og:url" content="https://import-this.github.io/bounce/" />
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content="Bounce" />
+        <meta property="og:site_name" content="Bounce" />
+        <meta property="og:image" content="https://import-this.github.io/bounce/img/wallpaper.png" />
+
+        <title>Game Dodge Ball</title>
+
+        <link rel="stylesheet" type="text/css" href="game-dodge-ball/style.css">
+
+      
+        <script type="text/javascript" src="game-dodge-ball/dataview-polyfill.js"></script>
+        <script type="text/javascript" src="game-dodge-ball/phaser-bounce.min.js"></script>
+        <script type="text/javascript" src="game-dodge-ball/bounce.js"></script>
+
+    </head>
+    <body>
+    
+        <div id="menu">
+            <div id="center">
+                <div id="start-menu">
+                    <h2 id="bounce">Dodge my Ball Game</h2>
+                    <div id="description">
+                        
+                    </div>
+                    <div id="instructions">
+                        Click anywhere and drag the mouse to move the circle.<br />
+                        Avoid the moving shapes for as long as you can.
+                    </div>
+                    <div id="mutators">
+                        <strong>Mutators:</strong>
+                        <label>
+                            <input id="fast" type="checkbox" name="mutator" value="fast">Fast
+                        </label>
+                        <label>
+                            <input id="speedup" type="checkbox" name="mutator" value="speedup">Speedup
+                        </label>
+                        <label>
+                            <input id="five" type="checkbox" name="mutator" value="five">Five
+                        </label>
+                        
+                    </div>
+                    <div id="ui">
+                        <strong>UI:</strong>
+                        <label>
+                            <input id="mouse" type="radio" name="ui" value="mouse">Mouse
+                        </label>
+                        <label>
+                            <input id="touch" type="radio" name="ui" value="touch">Touch
+                        </label>
+                    </div>
+                    <div>
+                        <button type="button" id="start-button">Play</button>
+                    </div>
+                </div>
+                <div id="end-menu">
+                    <h2>Game Over</h2>
+                    <table id="scores">
+                        <tr><td>Score:          <span id="curr-score"></span>   </td></tr>
+                        <tr><td>High Score:     <span id="high-score"></span>   </td></tr>
+                        <tr><td>Times played:   <span id="times"></span>        </td></tr>
+                    </table>
+                    <div>
+                        <button type="button" id="restart-button">Try Again</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script type="text/javascript">
+            (function(document, Bounce) {
+                function showStartMenu() {
+                    document.getElementById('start-menu').style.display = 'block';
+                    document.getElementById('menu').style.display = 'block';
+                }
+                function hideStartMenu() {
+                    document.getElementById('menu').style.display = 'none';
+                    document.getElementById('start-menu').style.display = 'none';
+                }
+
+                function showEndMenu() {
+                    document.getElementById('curr-score').innerHTML = game.bounce.score.toString();
+                    document.getElementById('high-score').innerHTML = Bounce.storage.getHighScore();
+                    document.getElementById('times').innerHTML = Bounce.storage.getTimesPlayed();
+
+                    document.getElementById('end-menu').style.display = 'block';
+                    document.getElementById('menu').style.display = 'block';
+                }
+                function hideEndMenu() {
+                    document.getElementById('menu').style.display = 'none';
+                    document.getElementById('end-menu').style.display = 'none';
+                }
+
+                var prefix = 'bounce_', game, ui, checkboxes, radioButtons;
+
+                // Select the corresponding radio button
+                ui = window.localStorage.getItem(prefix + 'ui');
+                if (ui) {
+                    // based on previous settings
+                    document.getElementById(ui).checked = true;
+                } else {
+                    // or arbitrarily. (Phaser's device detection doesn't work.)
+                    ui = 'mouse';
+                    document.getElementById(ui).checked = true;
+                }
+
+                // Let the game begin!
+                game = Bounce.play('bounce-canvas', {
+                    onMainMenuOpen: showStartMenu,
+                    onEndMenuOpen: showEndMenu,
+                    isMouse: (ui === 'mouse'),
+                    fast: document.getElementById('fast').checked,
+                    speedup: document.getElementById('speedup').checked,
+                    five: document.getElementById('five').checked,
+                    //big: document.getElementById('big').checked
+                });
+
+                // Handle mutator changes on the fly.
+                function checkboxChangeHandler(event) {
+                    game.bounce[this.value] = this.checked;
+                    game.state.start('Preloader');
+                }
+                checkboxes = document.querySelectorAll('input[name="mutator"]');
+                Array.prototype.forEach.call(checkboxes, function addEventHandler(checkbox) {
+                    checkbox.addEventListener('change', checkboxChangeHandler);
+                });
+
+                // Handle UI changes on the fly.
+                function radioChangeHandler(event) {
+                    window.localStorage.setItem(prefix + 'ui', this.value);
+                    game.bounce.isMouse = (this.value === 'mouse');
+                    game.state.start('Preloader');
+                }
+                radioButtons = document.querySelectorAll('input[name="ui"]');
+                Array.prototype.forEach.call(radioButtons, function addEventHandler(radio) {
+                    radio.addEventListener('change', radioChangeHandler);
+                });
+
+                // Setup UI buttons.
+                document.getElementById('start-button').addEventListener('click', function(event) {
+                    hideStartMenu();
+                    game.state.start('Game');
+                }, false);
+                document.getElementById('restart-button').addEventListener('click', function(event) {
+                    function clearSelection() {
+                        if (window.getSelection) {
+                            if (window.getSelection().empty) {                  // Chrome
+                                window.getSelection().empty();
+                            } else if (window.getSelection().removeAllRanges) { // Firefox
+                                window.getSelection().removeAllRanges();
+                            }
+                        } else if (document.selection) {                        // IE
+                            document.selection.empty();
+                        }
+                    }
+
+                    hideEndMenu();
+                    
+                    clearSelection();
+                    game.state.start('Game');
+                }, false);
+            }(document, Bounce));
+        </script>
+
+
+     
+    </body>
+</html>
